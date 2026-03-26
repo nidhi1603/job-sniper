@@ -1,0 +1,29 @@
+name: Job Sniper
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests python-dotenv
+      - run: python job_sniper.py --once
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Persist seen jobs
+        run: |
+          git config user.name "Job Sniper Bot"
+          git config user.email "bot@noreply.github.com"
+          git add seen_jobs.json job_drafts/ || true
+          git diff --cached --quiet || git commit -m "🤖 Scan $(date -u +%Y-%m-%dT%H:%M)"
+          git push || true
